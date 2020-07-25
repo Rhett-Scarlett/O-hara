@@ -1,0 +1,29 @@
+/**index.wxss**/
+
+.container{
+  margin-top: -60px;
+}
+.phone{
+  border-width: 0.7px 0.5px 0.5px 0.7px;
+  border-color: #C8C8CD;
+  border-style: solid;
+  padding: 2px;
+  background-color: white;
+}
+.gap{
+  margin: 3px;
+}
+.password{
+  border-width: 0.7px 0.5px 0.5px 0.7px;
+  border-color: #C8C8CD;
+  border-style: solid;
+  padding: 2px;
+  background-color: white;
+  margin-bottom: 7px;
+}
+.login{
+  width: 70px;
+  height: 30px;
+  font-size: 30rpx;
+  
+}
