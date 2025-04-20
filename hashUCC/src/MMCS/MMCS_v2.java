@@ -9,14 +9,7 @@ import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-class hyperedge{
-    int hypeid;//超边id
-    int verdex;//由于哪个点而推出,-1代表无意义
-    public hyperedge(int hypeid,int verdex){
-        this.hypeid=hypeid;
-        this.verdex=verdex;
-    }
-}
+
 public class MMCS_v2 {
     private List<List<Integer>> hyperedges; // 超边集合 下标就是id,超边顶点从小到大排序
     private  int numVertices; // 顶点数
@@ -38,10 +31,9 @@ public class MMCS_v2 {
     //选择加入的超边
     public int select_minF(){
         int minF=-1;
-        int min=999999;
+        int min=Integer.MAX_VALUE;
         int minC=numVertices;
         for(int i=0;i<uncovs.size();i++){
-
             int sum=0;
             //统计当前超边和CAND的顶点交集
             for(int j=0;j<hyperedges.get(uncovs.get(i).hypeid).size();j++){
