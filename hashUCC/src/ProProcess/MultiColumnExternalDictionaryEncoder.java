@@ -36,12 +36,17 @@ public class MultiColumnExternalDictionaryEncoder {
     public List<String> columnFiles;
     public List<String> columnDict;
 
+    public List<Double> threshold;
+
+    public double HIGH_CARDINALITY_THRESHOLD = 0.7;
+
     public void Proprocess(String inputFilePath) throws Exception {
 
         clustersNum = new ArrayList<>();
         uniqueNum = new ArrayList<>();
         columnFiles = new ArrayList<>();
         columnDict = new ArrayList<>();
+        threshold = new ArrayList<>();
 
         // 创建存储输出文件的目录
         Path outputDir = Paths.get("output_columns");
@@ -140,13 +145,16 @@ public class MultiColumnExternalDictionaryEncoder {
         file.delete();
 
         // Step 2.2: 生成字典文件
-        generateDictionary(sortedFile, dictFile);
+        boolean selected = generateDictionary(sortedFile, dictFile);
         file = new File(sortedFile);
         file.delete();
 
         // Step 2.3: 按 rowId 排序恢复原始行顺序
-        ColumnSorterID sorterID = new ColumnSorterID();
-        sorterID.ExternalSortID(dictFile, finalFile, chunksize, fileLength);
+        if(selected) {
+            new ColumnSorterIDExcludeUnique().ExternalSortID(dictFile, "V"+finalFile, chunksize, fileLength, uniqueNum.get(uniqueNum.size()-1));
+        }
+        new ColumnSorterID().ExternalSortID(dictFile, finalFile, chunksize, fileLength);
+
 
 
 
@@ -158,7 +166,7 @@ public class MultiColumnExternalDictionaryEncoder {
      * 若全局只出现一次，则编码为 -1；否则按顺序分配正整数编码。
      * 结果写入 dictFile
      */
-    private void generateDictionary(String sortedFile, String dictFile) throws IOException {
+    private boolean generateDictionary(String sortedFile, String dictFile) throws IOException {
         BufferedReader reader = new BufferedReader(new FileReader(sortedFile));
         DataOutputStream out = new DataOutputStream(new FileOutputStream(dictFile));
 //        BufferedWriter bw = new BufferedWriter(new FileWriter("test_" +dictFile));
@@ -210,9 +218,13 @@ public class MultiColumnExternalDictionaryEncoder {
         }
         clustersNum.add(++dictId);
         uniqueNum.add(unqiueValueCount);
+        System.out.print(" "+threshold.size());
+        threshold.add((double)unqiueValueCount/fileLength);
+        System.out.print(" "+threshold.get(threshold.size()-1));
         reader.close();
         out.close();
 //        bw.close();
+        return threshold.get(threshold.size()-1) > HIGH_CARDINALITY_THRESHOLD ? true : false ;
     }
 
 

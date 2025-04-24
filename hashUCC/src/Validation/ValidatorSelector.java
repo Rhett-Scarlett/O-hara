@@ -7,6 +7,9 @@ import Validation.HashMap.HashValidator;
 import test.Sample;
 import test.Validation;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.NoSuchAlgorithmException;
@@ -14,9 +17,11 @@ import java.util.*;
 
 public class ValidatorSelector {
 
-    private int HIGH_CARDINALITY_THRESHOLD = 100000;
-    // 阈值：所有属性的簇总和小于等于此值，则认为簇数量较小
-    private int SMALL_CLUSTER_TOTAL_THRESHOLD = 1000;
+    private double HIGH_CARDINALITY_THRESHOLD = 0.7;
+    // 阈值：由唯一值占比得出
+
+
+    private double SMALL_CLUSTER_TOTAL_THRESHOLD = 0.5;
 
     private  List<Integer> unqiueNum;
 
@@ -62,37 +67,40 @@ public class ValidatorSelector {
         // 如果存在某个属性的基数大于等于 HIGH_CARDINALITY_THRESHOLD，则选用 DirectValidator
 
         List<String>  validFile =new ArrayList<>();
+        List<Double> threshold = new ArrayList<>();
         String masterFile = null;
+        int mincol = -1;
+        double hash_threshold = HIGH_CARDINALITY_THRESHOLD;
         for (int i =0;i<candidateUCC.size();i++) {
-            if (unqiueNum.get(candidateUCC.size())>=HIGH_CARDINALITY_THRESHOLD) {
-                masterFile = columnFiles.get(candidateUCC.get(i));
-            }else validFile.add(columnFiles.get(candidateUCC.get(i)));
+            threshold.add((double)unqiueNum.get(candidateUCC.get(i))/fileLength);
+            if (threshold.get(i)>hash_threshold) {
+                mincol = i;
+                hash_threshold =threshold.get(i);
+            }
+            validFile.add(columnFiles.get(candidateUCC.get(i)));
         }
-        if(validFile.size() < candidateUCC.size()){
+        if(mincol>-1){
             System.out.println("hash-哈希");
+            masterFile ="V" + validFile.remove(mincol);
             return  sampler.validSample(new HashValidator(validFile,masterFile,fileLength).processTuples());
         }
-
-
+        System.out.println(validFile);
 
         // 计算每个属性的簇需要占几位，若总数小于32位则使用基于位图的验证器
         List<Integer> candidata_clusters = new ArrayList<>();
         String outFile = "Validation/"+candidateUCC.toString()+".dat";
         for (Integer col : candidateUCC) {
-
             if (clustersNum.get(col) > SMALL_CLUSTER_TOTAL_THRESHOLD) break;
-            candidata_clusters.add(clustersNum.get(col)-1)
-
-
-            ;
+            candidata_clusters.add(clustersNum.get(col)-1);
         }
-//        if(candidata_clusters.size() ==candidateUCC.size()){
-//            TupleBinaryGenerator tupleBit = new TupleBinaryGenerator(candidata_clusters);
-//            if(tupleBit.judge_useBitMap()<=32){
-//                System.out.println("Bit-位图");
-//                return  sampler.validSample(new BitMapValidator(validFile, tupleBit.getMaxIndexValue(candidata_clusters),outFile,tupleBit,fileLength).processTuples());
-//            }
-//        }
+        if(candidata_clusters.size() ==candidateUCC.size()){
+            TupleBinaryGenerator tupleBit = new TupleBinaryGenerator(candidata_clusters);
+            if(tupleBit.judge_useBitMap()<=31){
+                System.out.println("Bit-位图");
+                return  sampler.validSample(new BitMapValidator(validFile, tupleBit.getMaxIndexValue(candidata_clusters),outFile,tupleBit,fileLength).processTuples());
+            }
+        }
+
         System.out.println("hashBit-哈希位图");
         return  sampler.validSample(new BitHashValidator(candidata_clusters,validFile,fileLength,outFile).Validator(outFile));
     }

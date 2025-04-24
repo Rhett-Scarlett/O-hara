@@ -198,6 +198,7 @@ public class MMCS_v2 {
     //解决迭代问题,pos表示下一个位置的
 
 
+
     public void return_position_status(int pos,int ver){
         //将比ver层数低的cand状态返回
         for(int t=0;t<numVertices;t++){
@@ -297,7 +298,7 @@ public class MMCS_v2 {
                     for (int v=0;v<C.size();v++) {//将C中顶点加入栈，并将其加入复原CAND集合中
                         stack.push(C.get(v));
                         position.push(pos+1);
-                        cand[C.get(v)]=false;
+                        cand[C.get(v)]= false;
                         recoverCand[C.get(v)]=pos+1;
                     }
                 }
@@ -309,8 +310,8 @@ public class MMCS_v2 {
             //选择一个点ver
             ver=stack.pop();
             pos=position.pop();
-            cand[ver]=false;
-            recoverCand[ver]=pos;
+            //cand[ver]=false;
+            // recoverCand[ver]=pos;
 
             //3、判断是否能将v加入当前击中集S
             update_Crit_Uncov(ver);//更新cirt和uncov

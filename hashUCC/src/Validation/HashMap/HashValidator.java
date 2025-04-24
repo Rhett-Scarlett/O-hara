@@ -1,5 +1,7 @@
 package Validation.HashMap;
 
+import Validation.IntArrayKey;
+
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -7,7 +9,7 @@ import java.util.*;
 public class HashValidator {
     private DataInputStream master_CL;  // 主列文件的输入流
     private List<DataInputStream> readers;  // 存储每个列文件的输入流
-    private Map<String, List<Integer>> hashTable;
+    private Map<IntArrayKey, List<Integer>> hashTable;
     private Map<Integer, List<Integer>> hashMap ;
     private int file_size;
     private int candidateSize;
@@ -77,47 +79,53 @@ public class HashValidator {
      * @throws IOException 如果读取文件时发生错误
      */
     public Map<Integer,List<Integer>> processTuples() throws IOException {
-        int masterClusterID, masterTupleID,lastTupleID = -1;
-        int currentPos = 0;
+        int masterClusterID, masterTupleID,lastTupleID = 0;
+        int current = 0;
         // 逐行读取主列文件和其他列文件
-
-        while (currentPos < file_size) {
+        int length = master_CL.readInt();
+        while (current++ < length) {
             // 读取 master_CL 中的元组ID和主簇ID
 
             masterTupleID = master_CL.readInt();
             masterClusterID = master_CL.readInt();
-            long bytesToSkip = (masterTupleID - lastTupleID+1)*4;
+            long bytesToSkip = (masterTupleID - lastTupleID)*4;
+            System.out.println(masterTupleID+" "+masterClusterID+" "+lastTupleID+" " + bytesToSkip/4);
 
-            List<Integer> clusterIDs = new ArrayList<>();
-            clusterIDs.add(masterClusterID);
+            int[] clusterIDs = new int[readers.size()+1];
+            clusterIDs[0] = masterClusterID;
             boolean valid = true;
 
             // 同步读取其他列文件的元组ID和簇ID
-            for (DataInputStream reader : readers) {
-                int columnValue = getColumnValue(reader, bytesToSkip);
+            for (int i =1 ;i<= readers.size();i++) {
+                int columnValue = getColumnValue(readers.get(i-1), bytesToSkip);
 
-                if (columnValue < 0) {
-                    valid = false;
-                    break;
-                }
-                clusterIDs.add(columnValue);
+                if (columnValue < 0) valid = false;
+                clusterIDs[i] = columnValue;
             }
 
             // 如果所有列都有效，生成二进制数据并存储
             if (valid) {
-                String key = clusterIDs.toString(); // 生成二进制数据
+                IntArrayKey key = new IntArrayKey(clusterIDs); // 生成二进制数据
+                for (int value : clusterIDs) System.out.print( value+" ");
+                System.out.println();
                 hashTable.computeIfAbsent(key, k -> new ArrayList<>()).add(masterTupleID);  // 使用验证器检查是否存在重复数据
             }
 
-            lastTupleID = masterTupleID;  // 处理下一个元组
+            lastTupleID = masterTupleID+1;  // 处理下一个元组
         }
+
         close();
         int i=0;
         hashMap =new HashMap<>();
-        for (Map.Entry<String, List<Integer>> entry : hashTable.entrySet()) {
-
-            hashMap.put(i++,entry.getValue());
+        List<Integer> cluster;
+        for (Map.Entry<IntArrayKey, List<Integer>> entry : hashTable.entrySet()) {
+            cluster = entry.getValue();
+            if(cluster.size()>1){
+                System.out.println("簇"+i+cluster);
+                hashMap.put(i++,cluster);
+            }
         }
+
         return hashMap;
     }
 

@@ -1,5 +1,9 @@
 package MMCS;
 
+import Validation.ValidatorSelector;
+
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -8,31 +12,72 @@ import java.util.Stack;
 //负责搜索主流程控制
 public class MMCSController {
 
-    private final Hypergraph hypergraph;
-    private final SearchState state;
-    private final List<int[]> minimalHittingSets = new ArrayList<>();
+    private final Stack<Integer> searchPath;
+    private final Stack<Integer> backtrackLevel;
 
-    public MMCSController(Hypergraph hypergraph, SearchState state) {
-        this.hypergraph = hypergraph;
-        this.state = state;
+    private final SearchState state;
+
+    private VertexSelector verSelect;
+
+    private List<Integer> S;//当前候选UCC
+
+    private ValidatorSelector validation;
+
+    private ResultCollector result;
+
+    private boolean is_minimal;
+
+    public MMCSController(Hypergraph hypergraph,List<Integer> unique, ValidatorSelector validation) {
+        state = new SearchState(unique.size(),hypergraph);
+        searchPath = new Stack<>();
+        backtrackLevel = new Stack<>();
+        result = new ResultCollector();
+        verSelect = new VertexSelector(searchPath,backtrackLevel, hypergraph, unique, state.uncovs, unique.size());
+        this.validation = validation;
+
+        is_minimal = true ;
+        S = new ArrayList<>();
     }
 
-    public void run() {
+    public void return_position_status(int lastVer){
+        //将比ver层数低的cand状态返回
+        verSelect.return_position_ver(lastVer);
+        //将S、uncov和crit状态返回
+        state.recover_Crit_Uncov(S.remove(S.size()-1));
+    }
+    public void return_position_status(int pos,int ver){
+        //将比ver层数低的cand状态返回
+        verSelect.return_position_ver(pos,ver);
+
+        //将S状态饭返回
+        List<Integer> delete = new ArrayList<>();
+        for(int i=S.size();i>pos;i--) delete.add(S.remove(S.size()-1));
+
+        //将uncov和crit状态返回
+        state.recover_Crit_Uncov(delete);
+    }
+
+    public void goback(int ver){
+        if(backtrackLevel.peek() == S.size()-1 ){
+            System.out.println("只返回点"+ver);
+            //System.out.println("下一个位置"+backtrackLevel.peek()+"下一个点 "+searchPath.peek());
+            return_position_status(ver);
+        }
+        else return_position_status(backtrackLevel.peek(), searchPath.peek());
+    }
+
+    public void run() throws IOException, NoSuchAlgorithmException {
         // 执行主逻辑
         //1、初始化
-        List<Integer> S=new ArrayList<>();
-        Stack<Integer> stack=new Stack<>();//用来记录搜索树的每个节点
-        Stack<Integer> position=new Stack<>();//用来记录搜索树中每个节点所处位置，如果找到最小/找不到时，应当将hittingset返还到第几层
 
         int ver=0;//当前判断的顶点
-        int pos=-1;//当前顶点所在位置,根顶点层数是0
-        boolean is_Minimal=false;
         //进入迭代
         while(true){
-            if (state.uncovs_num==0){
+            if (state.uncovs_num == 0){
                 //是最小覆盖集
-                List<Integer> add_min= (List<Integer>) S.clone();
-                add_min.sort(new Comparator<Integer>() {
+                List<Integer> minUCC= new ArrayList<>();
+                for (int v : S)  minUCC.add(v);
+                minUCC.sort(new Comparator<Integer>() {
                     @Override
                     public int compare(Integer o1, Integer o2) {
                         return o1<o2? -1:1;
@@ -40,76 +85,48 @@ public class MMCSController {
                 });
 
 
-                int newH = validation.selectValidator(add_min);//得到新增边的条数
-
-
+                int newH = validation.selectValidator(minUCC);//得到新增边的条数
                 //验证失败
                 if(newH>0){
-
                     //添加uncov
-                    for(int i=hyperedges.size()-newH;i<hyperedges.size();i++){
-                        uncovs.add(new hyperedge(i,-1));
+                    for(int i=0;i<newH;i++){
+                        state.uncovs.add(false);
+
                     }
+                    //System.out.println("当前超边数量 "+ state.uncovs.size());
+                    state.uncovs_num+=newH;
+                    System.out.println("验证失败");
                     continue;
 
                 }else{//验证成功
-
-                    int[] ucc=new int[add_min.size()];
-                    for(int i=0;i<add_min.size();i++) ucc[i]=add_min.get(i);
-                    minimalHittingSets.add(ucc);
-                    add_min.clear();
-
+                    result.addMinUCC(minUCC);
+                    //System.out.println("当前超边数量 "+ state.uncovs.size());
                     //这一段是用来解决，mmcs返回的问题
-                    if(!position.isEmpty()) return_position_status(position.peek(),stack.peek());
+                    if(!backtrackLevel.isEmpty()) goback(ver);
                 }
 
-                //验证通过后，判断是否重复
-
-            }else if(is_Minimal==false){
-                //1. 选择一个未覆盖的超边.需要剪枝找到一个最小化| F∩CAND |f和cand相交的 点最少
-                int minF=select_minF();
-                if ((minF<0)){
-                    if(!position.isEmpty()) return_position_status(position.peek(), stack.peek());
-                }else{
-                    //2. 从候选顶点集合中删除这些顶点，并得到c
-                    ArrayList<Integer> C=getC(minF);
-
-                    for (int v=0;v<C.size();v++) {//将C中顶点加入栈，并将其加入复原CAND集合中
-                        stack.push(C.get(v));
-                        position.push(pos+1);
-                        cand[C.get(v)]=false;
-                        recoverCand[C.get(v)]=pos+1;
-                    }
-                }
-
+            }else if(is_minimal){
+                if(!verSelect.selectEdge(S.size())&&!backtrackLevel.isEmpty()) goback(S.get(S.size()-1));
             }
-            //判断是否应该推出循环
-            if(stack.isEmpty()) break;
+            if(searchPath.isEmpty()) break;
 
-            //选择一个点ver
-            ver=stack.pop();
-            pos=position.pop();
-            cand[ver]=false;
-            recoverCand[ver]=pos;
+            //3、选择一个点ver,判断是否能将v加入当前击中集S
+            ver = verSelect.selectVertex();
+            //System.out.println("ver "+ ver);
 
-            //3、判断是否能将v加入当前击中集S
-            update_Crit_Uncov(ver);//更新cirt和uncov
-            S.add(ver);//S∪v
-            System.out.println(S+" "+ver+" "+ pos);
-
-
-
-            //判断将该点加入候选集是否满足极小性条件
-            if(!isMinimal()) {//不满足极小性条件,进行下一个点的判断
-                if(!position.isEmpty()) return_position_status(position.peek(), stack.peek());
-                else recover_Crit_Uncov(ver);
-                is_Minimal=true;
-            }else {
-                is_Minimal=false;
-            }
+            S.add(ver);
             //满足极小性则进行下一步,将当前判断顶点加入S
+            is_minimal = state.update_Crit_Uncov(ver);
+            if(!is_minimal){
+                //判断是否应该推出循环
+                //System.out.println(ver);
+
+                if(!backtrackLevel.isEmpty()) goback(ver);
+            }
+            System.out.println("S "+S);
+            //
         }
-        print();
+        result.print();
     }
 }
 

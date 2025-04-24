@@ -23,7 +23,7 @@ public class SearchState {
     //当前未击中边
     public List<Boolean> uncovs;
 
-    public int uncov_num;
+    public int uncovs_num;
 
     /**
      * 构造函数：初始化 cand 数组、recoverCrits 栈数组、recoverCand 数组。
@@ -36,8 +36,8 @@ public class SearchState {
         uncovs = new ArrayList<>();
         this.graph =graph;
 
-        uncov_num = graph.size();
-        for (int i=0;i<uncov_num;i++) uncovs.add(true);
+        uncovs_num = graph.size();
+        for (int i=0;i<uncovs_num;i++) uncovs.add(true);
         crit_num = new int[numVertices];
 
     }
@@ -50,7 +50,7 @@ public class SearchState {
      *
      * @param target 被加入当前 hitting set S 的顶点
      */
-    private boolean update_Crit_Uncov(int target){
+    public boolean update_Crit_Uncov(int target){
 
         List<Integer> targetHitEdges = new ArrayList<>();
         verToHitEdge.put(target,targetHitEdges);
@@ -67,14 +67,28 @@ public class SearchState {
             if(is_contains) {//超图中每条包含v的边f
                 //1.先判断边e是否已被击中
                 if(hitEdgeToVer.containsKey(e)){// 被击中
-                    if(isMinimal(hitEdgeToVer.get(e).peek(),target)) return false;
-                    crit_num[hitEdgeToVer.get(e).peek()]--; //改变 原被击中超边的数 量
+
+                    if(hitEdgeToVer.get(e).size() == 1){
+                        //System.out.println("已击中边"+e+" "+graph.getEdge(e));
+                        if((crit_num[hitEdgeToVer.get(e).peek()]==1)) {
+                            System.out.println("目前点"+target+"使得点"+hitEdgeToVer.get(e).peek()+"临界超边为0");
+                            print();
+                            return false;
+                        }
+                        crit_num[hitEdgeToVer.get(e).peek()]--; //改变 原被击中超边的数 量
+                    }
                     hitEdgeToVer.get(e).add(target);//将新增点加入击中
                 }else{
                     //未被击中，则将e作为v的临界超边
-                    hitEdgeToVer.put(e,new Stack<>()).add(target);
+                    Stack<Integer> stack = new Stack<>();
+                    stack.add(target);
+                    hitEdgeToVer.put(e, stack);
+
                     crit_num[target]++;
                     uncovs.set(e,false);
+                    uncovs_num--;
+                    //System.out.println("未击中边"+e+" "+graph.getEdge(e));
+                    //System.out.println("目前点"+target+" 临界超边"+crit_num[target]);
                 }
                 targetHitEdges.add(e);
             }
@@ -84,15 +98,8 @@ public class SearchState {
         return true;
     }
 
-    public  boolean isMinimal(int u, int target){
-        if(crit_num[u]==1){
-            recover_Crit_Uncov(Collections.singletonList(target));  // 可读性强，性能优
-            return false;
-        }
-        return true;
-    }
 
-    private  void  recover_Crit_Uncov(List<Integer> target) {
+    public  void  recover_Crit_Uncov(List<Integer> target) {
 
         // 统计每条超边被多少个点“释放”
         Map<Integer,Integer> count = new HashMap<>();
@@ -101,6 +108,7 @@ public class SearchState {
                 //“把 edge 作为键放入 count 这个 Map 中，如果 edge 不存在，就设置值为 1；如果已经存在，就把旧值和 1 相加后作为新值。
                 count.merge(edge, 1, Integer::sum);
             }
+            crit_num[ver] = 0;
         }
 
         // 遍历每条被 pop 的超边，执行恢复逻辑
@@ -112,9 +120,44 @@ public class SearchState {
             if(hitVer.isEmpty()) {//如果这条边修改后不被击中
                 hitEdgeToVer.remove(edgeKey);
                 uncovs.set(edgeKey,true);
+                uncovs_num++;
             }
             else if(hitVer.size()==1) crit_num[hitVer.peek()]++;
         }
     }
 
+    //只有一个点需要恢复
+    public  void  recover_Crit_Uncov(int target) {
+
+        // 遍历每条被 pop 的超边，执行恢复逻辑
+        for (int edge : verToHitEdge.remove(target)){// 移除 target 的击中记录
+            Stack<Integer> hitVer = hitEdgeToVer.get(edge);
+            hitVer.pop();
+            if(hitVer.isEmpty()) {//如果这条边修改后不被击中
+                hitEdgeToVer.remove(edge);
+                uncovs.set(edge,true);
+                uncovs_num++;
+            }else if(hitVer.size()==1) crit_num[hitVer.peek()]++;
+        }
+
+        crit_num[target] = 0;
+
+    }
+
+    public void print(){
+        System.out.print("临界超边数量");
+        for(int i= 0;i< crit_num.length;i++){
+
+            if(crit_num[i]>0){
+                System.out.print("["+i+" "+crit_num[i]+"] ");
+            }
+
+        }
+        System.out.println();
+        System.out.println("已击中边");
+        for (Map.Entry<Integer,Stack<Integer>> edge: hitEdgeToVer.entrySet()){
+            if(edge.getValue().size()==1)System.out.println("边"+edge.getKey()+" "+graph.getEdge(edge.getKey())+edge.getValue().size());
+        }
+
+    }
 }
