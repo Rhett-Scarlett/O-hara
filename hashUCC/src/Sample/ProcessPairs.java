@@ -47,6 +47,10 @@ public class ProcessPairs {
             }
         }
 
+//        for (Map.Entry<Integer,List<Integer>> t: tupleDataMap.entrySet()){
+//            System.out.println(t.getKey()+" "+ t.getValue());
+//        }
+
         // 可选：方法结束后 tupleDataMap 可用于后续处理
     }
     //2.处理元组对，生成超边
@@ -56,7 +60,9 @@ public class ProcessPairs {
         List<Integer> t2 = tupleDataMap.get(tuplePair.id2);
 
         for (int i=0; i<t1.size(); i++) {
-            if (t1.get(i)==-1||t2.get(i)==-1||t1.get(i) != t2.get(i)) edgeList.add(i);
+            if (t1.get(i)==-1||(!t1.get(i).equals(t2.get(i)))){
+                edgeList.add(i);
+            }
         }
 
 

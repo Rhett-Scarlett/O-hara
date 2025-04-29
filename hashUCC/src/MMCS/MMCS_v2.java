@@ -24,7 +24,7 @@ public class MMCS_v2 {
     List<int[]> minimalHittingSets = new ArrayList<>();//所有的最小覆盖集
     public  ValidatorSelector validation;//验证
 
-    public  int[] min_column;
+    public  List<Integer> unique;
 
 
 
@@ -33,6 +33,7 @@ public class MMCS_v2 {
         int minF=-1;
         int min=Integer.MAX_VALUE;
         int minC=numVertices;
+        int max_Unique = Integer.MIN_VALUE;
         for(int i=0;i<uncovs.size();i++){
             int sum=0;
             //统计当前超边和CAND的顶点交集
@@ -44,9 +45,15 @@ public class MMCS_v2 {
             //如果当前超边与cand的顶点交集小于或者等于当前统计的最小值并且大于0
             if (sum<=min&&sum>0){
                 //如果等于，需要判断哪一列的簇和小，就选择哪一列
-
-                    min=sum;
-                    minF=uncovs.get(i).hypeid;
+                int temp =0;
+                for(int ver : hyperedges.get(uncovs.get(i).hypeid)){
+                    if(unique.get(ver) > temp)  temp = unique.get(ver);
+                }
+                //如果等于，需要判断哪一列的唯一性大，就选择哪一列，就选择哪条边
+                if (min == sum&&max_Unique > temp)  continue;
+                min=sum;
+                max_Unique = temp;
+                minF=uncovs.get(i).hypeid;
 
 
             }
@@ -216,10 +223,11 @@ public class MMCS_v2 {
         }
     }
     //public MMCS
-    public MMCS_v2(int numVertices1, List<List<Integer>> hyperedges1, ValidatorSelector validation1) {
+    public MMCS_v2(int numVertices1, List<List<Integer>> hyperedges1, ValidatorSelector validation1, List<Integer> unique) {
         hyperedges=hyperedges1;
         numVertices=numVertices1;
         validation=validation1;
+        this.unique = unique;
 
         //初始化cand，包含所有点
         cand = new boolean[numVertices];
@@ -237,17 +245,16 @@ public class MMCS_v2 {
         S=Hitting_set;
         Stack<Integer> stack=new Stack<>();//用来记录搜索树的每个节点
         Stack<Integer> position=new Stack<>();//用来记录搜索树中每个节点所处位置，如果找到最小/找不到时，应当将hittingset返还到第几层
-        System.out.println("hyperedges");
-        for(int i=0;i<hyperedges.size();i++) {
-            System.out.print(i+" ");
-            for(int j=0;j<hyperedges.get(i).size();j++){
-                System.out.print(hyperedges.get(i).get(j)+" ");
-            }
-            System.out.println();
-        }
         int ver=0;//当前判断的顶点
         int pos=-1;//当前顶点所在位置,根顶点层数是0
         boolean is_Minimal=false;
+//        for(int i=0;i<hyperedges.size();i++) {
+//            System.out.print(i+" ");
+//            for(int j=0;j<hyperedges.get(i).size();j++){
+//                System.out.print(hyperedges.get(i).get(j)+" ");
+//            }
+//            System.out.println();
+//        }
         //进入迭代
         while(true){
             if (uncovs.isEmpty()){
@@ -259,10 +266,9 @@ public class MMCS_v2 {
                         return o1<o2? -1:1;
                     }
                 });
-
+                //System.out.println(add_min);
 
                 int newH = validation.selectValidator(add_min);//得到新增边的条数
-
 
                 //验证失败
                 if(newH>0){
@@ -316,7 +322,6 @@ public class MMCS_v2 {
             //3、判断是否能将v加入当前击中集S
             update_Crit_Uncov(ver);//更新cirt和uncov
             S.add(ver);//S∪v
-            System.out.println(S+" "+ver+" "+ pos);
 
 
 

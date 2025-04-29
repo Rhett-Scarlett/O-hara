@@ -22,7 +22,8 @@ public class BitMapValidator {
     private int fileLength;
 
     private DataOutputStream writef;
-    private String outputFile;
+
+
 
     /**
      * 构造函数，初始化文件读取器、计算字节长度，并初始化验证器。
@@ -105,9 +106,8 @@ public class BitMapValidator {
         close();
         genrateWrite();
 
-        for (Map.Entry<Integer,List<Integer>> entry : hashMap.entrySet()){
-            System.out.println("cluster"+entry.getKey()+" : "+entry.getValue());
-        }
+
+
         return hashMap;
     }
 

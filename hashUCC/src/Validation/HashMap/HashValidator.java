@@ -89,7 +89,7 @@ public class HashValidator {
             masterTupleID = master_CL.readInt();
             masterClusterID = master_CL.readInt();
             long bytesToSkip = (masterTupleID - lastTupleID)*4;
-            System.out.println(masterTupleID+" "+masterClusterID+" "+lastTupleID+" " + bytesToSkip/4);
+            //System.out.println(masterTupleID+" "+masterClusterID+" "+lastTupleID+" " + bytesToSkip/4);
 
             int[] clusterIDs = new int[readers.size()+1];
             clusterIDs[0] = masterClusterID;
@@ -106,8 +106,8 @@ public class HashValidator {
             // 如果所有列都有效，生成二进制数据并存储
             if (valid) {
                 IntArrayKey key = new IntArrayKey(clusterIDs); // 生成二进制数据
-                for (int value : clusterIDs) System.out.print( value+" ");
-                System.out.println();
+//                for (int value : clusterIDs) System.out.print( value+" ");
+//                System.out.println();
                 hashTable.computeIfAbsent(key, k -> new ArrayList<>()).add(masterTupleID);  // 使用验证器检查是否存在重复数据
             }
 
@@ -121,7 +121,7 @@ public class HashValidator {
         for (Map.Entry<IntArrayKey, List<Integer>> entry : hashTable.entrySet()) {
             cluster = entry.getValue();
             if(cluster.size()>1){
-                System.out.println("簇"+i+cluster);
+                //System.out.println("簇"+i+cluster);
                 hashMap.put(i++,cluster);
             }
         }

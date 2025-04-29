@@ -33,10 +33,11 @@ public class MultiColumnExternalDictionaryEncoder {
     public String outputDir = "output_columns/";
     public List<Integer> clustersNum;//存储簇数量
     public List<Integer> uniqueNum;//存储基数
+
+    public List<Boolean> isHash;
     public List<String> columnFiles;
     public List<String> columnDict;
 
-    public List<Double> threshold;
 
     public double HIGH_CARDINALITY_THRESHOLD = 0.7;
 
@@ -46,7 +47,7 @@ public class MultiColumnExternalDictionaryEncoder {
         uniqueNum = new ArrayList<>();
         columnFiles = new ArrayList<>();
         columnDict = new ArrayList<>();
-        threshold = new ArrayList<>();
+        isHash = new ArrayList<>();
 
         // 创建存储输出文件的目录
         Path outputDir = Paths.get("output_columns");
@@ -57,10 +58,12 @@ public class MultiColumnExternalDictionaryEncoder {
         // Step 1: 拆分多列文件为单列文件，并为每行添加行号
         List<String> colFiles = splitColumns(inputFilePath);
 
+
         // Step 2: 分别对每个单列文件进行外部排序、生成字典、编码替换、恢复原始行顺序
         for (int i = 0; i < colFiles.size(); i++) {
             processColumn(Integer.toString(i), colFiles.get(i));
         }
+        //System.out.println(isHash);
     }
 
     /**
@@ -143,16 +146,19 @@ public class MultiColumnExternalDictionaryEncoder {
         sorterValue.ExternalSortValue(colFile, sortedFile, chunksize);
         File file= new File(colFile);
         file.delete();
+        //System.out.println(sortedFile);
 
         // Step 2.2: 生成字典文件
         boolean selected = generateDictionary(sortedFile, dictFile);
         file = new File(sortedFile);
         file.delete();
+        //System.out.println(dictFile);
+        isHash.add(selected);
 
         // Step 2.3: 按 rowId 排序恢复原始行顺序
-        if(selected) {
-            new ColumnSorterIDExcludeUnique().ExternalSortID(dictFile, "V"+finalFile, chunksize, fileLength, uniqueNum.get(uniqueNum.size()-1));
-        }
+//        if(selected) {
+//            new ColumnSorterIDExcludeUnique().ExternalSortID(dictFile, "V"+finalFile, chunksize, fileLength, uniqueNum.get(uniqueNum.size()-1));
+//        }
         new ColumnSorterID().ExternalSortID(dictFile, finalFile, chunksize, fileLength);
 
 
@@ -218,13 +224,10 @@ public class MultiColumnExternalDictionaryEncoder {
         }
         clustersNum.add(++dictId);
         uniqueNum.add(unqiueValueCount);
-        System.out.print(" "+threshold.size());
-        threshold.add((double)unqiueValueCount/fileLength);
-        System.out.print(" "+threshold.get(threshold.size()-1));
         reader.close();
         out.close();
 //        bw.close();
-        return threshold.get(threshold.size()-1) > HIGH_CARDINALITY_THRESHOLD ? true : false ;
+        return (double)unqiueValueCount/fileLength > HIGH_CARDINALITY_THRESHOLD ? true : false ;
     }
 
 

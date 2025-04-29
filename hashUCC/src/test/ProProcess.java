@@ -15,14 +15,13 @@ public class ProProcess {
     public   List<List<Integer>>[] PLI;
     public   List<String>[] PLIid;//初始结构
     public   List<int[]> reversePLI;//逆PLI
-    public   List<int[]> hyperedges; // 超边集合 下标就是id
 
     public   int[] min_column;
     public  void proprocess() throws IOException {
         //1.读数据并生成初步PLI
-        BufferedReader br=new BufferedReader(new InputStreamReader(new FileInputStream("horse.csv")));
+        BufferedReader br=new BufferedReader(new InputStreamReader(new FileInputStream("abalone.csv")));
         String line=br.readLine();
-        String[] s=line.split(";");
+        String[] s=line.split(",");
         //初始化
         int length=0;
         numVer=s.length ;
@@ -52,7 +51,7 @@ public class ProProcess {
             }
             if((line= br.readLine())==null) break;
             length++;
-            s=line.split(";");
+            s=line.split(",");
         }
 
         length++;

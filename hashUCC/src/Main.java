@@ -11,6 +11,7 @@ import test.Sample;
 import test.Validation;
 
 
+import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.nio.file.Files;
@@ -22,31 +23,39 @@ import java.util.List;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        MultiColumnExternalDictionaryEncoder encoder = new MultiColumnExternalDictionaryEncoder();
 
-        encoder.Proprocess("horse.csv");
-        Path outputDir = Paths.get("Validation");
-        Files.createDirectories(outputDir);
-
-        ProProcess pr =new ProProcess();
-        pr.proprocess();
-        Sample sample=new Sample(pr.numVer,pr.PLI,pr.reversePLI);
-        Validation  validation=new Validation(pr.numVer,pr.PLI,pr.reversePLI);
-
-
-        Sampler sampler = new Sampler(encoder.columnFiles,encoder.columnDict,encoder.fileLength);
-
-        ValidatorSelector validatorSelector = new ValidatorSelector(sampler,encoder.clustersNum,encoder.uniqueNum,encoder.columnFiles,encoder.fileLength,validation,sample);
- //       sampler.hypeGraph.hyperedges =sample.hyperedges;
-        for(int i=0;i<pr.numVer;i++) sample.sample(pr.PLI[i]);
-
-//        Hypergraph  graph = new Hypergraph(sampler.hypeGraph.hyperedges);
-//        MMCSController mmcs = new MMCSController(graph, encoder.uniqueNum,validatorSelector);
-//        mmcs.run();
-
-        MMCS_v2 mmcs = new MMCS_v2(encoder.columnFiles.size(),sampler.hypeGraph.hyperedges, validatorSelector);
-        sampler.initateSample();
-        mmcs.mmcs(new ArrayList<>());
+        ProcessInput processInput = new ProcessInput("horse.csv");
+//        long st= System.currentTimeMillis();
+//        MultiColumnExternalDictionaryEncoder encoder = new MultiColumnExternalDictionaryEncoder();
+//
+//        encoder.Proprocess("chess.csv");
+//        Path outputDir = Paths.get("Validation");
+//        Files.createDirectories(outputDir);
+//
+//        System.out.println(System.currentTimeMillis() -st);
+//
+//        ProProcess pr =new ProProcess();
+//        pr.proprocess();
+//        Sample sample=new Sample(pr.numVer,pr.PLI,pr.reversePLI);
+//        Validation  validation=new Validation(pr.numVer,pr.PLI,pr.reversePLI);
+//
+//
+//        Sampler sampler = new Sampler(encoder.columnFiles,encoder.columnDict,encoder.fileLength,sample);
+//
+//        ValidatorSelector validatorSelector = new ValidatorSelector(sampler,encoder.clustersNum,encoder.isHash,encoder.columnFiles,encoder.fileLength,sample,validation);
+//        sampler.hypeGraph.hyperedges =sample.hyperedges;
+//        //for(int i=0;i<pr.numVer;i++) sample.sample(pr.PLI[i]);
+//        //System.out.println(sample.hyperedges.size());
+//
+////        Hypergraph  graph = new Hypergraph(sampler.hypeGraph.hyperedges);
+////        MMCSController mmcs = new MMCSController(graph, encoder.uniqueNum,validatorSelector);
+////        mmcs.run();
+//        System.out.println(System.currentTimeMillis() -st);
+//
+//        MMCS_v2 mmcs = new MMCS_v2(encoder.columnFiles.size(),sampler.hypeGraph.hyperedges, validatorSelector, encoder.uniqueNum);
+//        sampler.initateSample();
+//        mmcs.mmcs(new ArrayList<>());
+//        System.out.println(System.currentTimeMillis() -st);
 
         
 //        List<Integer> ucc = new ArrayList<>();

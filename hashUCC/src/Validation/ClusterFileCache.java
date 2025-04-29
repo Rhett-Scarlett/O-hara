@@ -11,79 +11,123 @@ public class ClusterFileCache {
     // 前缀树节点定义
     static class TrieNode {
         Map<Integer, TrieNode> children = new HashMap<>();  // 子节点映射
-        List<Set<Integer>> cachedCombos = new ArrayList<>(); // 到达该节点所存的组合（用于复用匹配）
+
+        boolean is_Set = false ;
+
+        int clusternum = 0;
+        boolean isHash = false;
     }
 
     private TrieNode root = new TrieNode(); // 前缀树的根节点
 
-    /**
-     * 插入新的属性组合及其对应的聚类缓存文件路径
-     *
-     * @param attrs    属性组合（例如：[1,3,5]）
-     * @param filename 缓存的聚类文件名（例如："cluster_1.dat"）
-     */
-    public void insert(Set<Integer> attrs, String filename) {
+    private  List<Integer> candidate;
+
+    public   List<List<Integer>> result = new ArrayList<>(); //仅保存叶子节点的集合，即各个有效分支的 你  最大覆盖的子集
+
+    public   List<Integer> result_clusternum = new ArrayList<>();
+
+    public   List<Boolean> result_isHash = new ArrayList<>();
+
+    public   boolean isHash ;
+
+
+    public void insert(List<Integer> attrs,int clusternum, boolean isHash) {
         // 对属性组合排序，便于在 Trie 中形成稳定路径
-        List<Integer> sorted = new ArrayList<>(attrs);
-        Collections.sort(sorted);
 
         TrieNode node = root;
         // 构建前缀路径
-        for (int attr : sorted) {
+        for (int attr : attrs) {
             node = node.children.computeIfAbsent(attr, k -> new TrieNode());
         }
-
-        // 在路径尾部记录完整组合
-        node.cachedCombos.add(attrs);
-        // 在哈希表中建立文件名索引
-        fileMap.put(attrs, filename);
+        node.is_Set = true;
+        node.clusternum = clusternum;
+        node.isHash = isHash;
     }
-
-    /**
-     * 查询当前属性组合是否可以复用已有缓存文件
-     *
-     * @param candidate 当前需要验证的属性组合
-     * @return 如果找到可复用的组合，返回其对应缓存文件名，否则返回 empty
-     */
-    public Optional<String> query(Set<Integer> candidate) {
-        List<Set<Integer>> possible = findPrefixPaths(candidate);
-        for (Set<Integer> cached : possible) {
-            // 若已有组合是 candidate 的子集，说明可以复用该缓存
-            if (candidate.containsAll(cached)) {
-                return Optional.of(fileMap.get(cached));
+    public List<Integer> findSubsets(List<Integer> candidate) {
+        isHash = false;
+        this.candidate = candidate;
+        List<Integer> pre = new ArrayList<>();
+        dfs(root, 0, pre);
+        if(isHash){
+            for (int i =0;i<result_isHash.size();i++){
+                if(result_isHash.get(i)) return  result.get(i);
             }
         }
-        return Optional.empty();
+        if(result.size() == 0) return candidate;
+        filterMaximalSubsets();
+
+        return isComplete();
     }
-
-    /**
-     * 遍历 Trie 中与 candidate 前缀路径相同的所有缓存组合
-     *
-     * @param attrs 当前候选属性组合
-     * @return 可达路径中记录的所有组合（用于复用匹配）
-     */
-    private List<Set<Integer>> findPrefixPaths(Set<Integer> attrs) {
-        List<Integer> sorted = new ArrayList<>(attrs);
-        Collections.sort(sorted);
-
-        List<Set<Integer>> result = new ArrayList<>();
-        TrieNode node = root;
-
-        for (int attr : sorted) {
-            // 收集当前路径上可用的组合
-            if (node.cachedCombos != null) {
-                result.addAll(node.cachedCombos);
+    // DFS 查找所有子集路径
+    private boolean dfs(TrieNode node, int idx, List<Integer> pre) {
+        if(isHash == true) return false;
+        boolean isMaximal = true;
+        for (int i = idx ; i< candidate.size();i++){
+            int attr = candidate.get(i);
+            if(node.children.containsKey(attr)){
+                pre.add(attr);
+                if(dfs(node.children.get(attr),i+1,pre)) isMaximal = false ;
+                pre.remove(pre.size()-1);
             }
-            // 向下遍历
-            node = node.children.get(attr);
-            if (node == null) break; // 不存在路径则停止
-        }
 
-        // 最后一个节点的组合也需要加入
-        if (node != null && node.cachedCombos != null) {
-            result.addAll(node.cachedCombos);
         }
-
-        return result;
+        if(isMaximal&&node.is_Set) {//如果往下找不到集合，这就是最大的
+           if (node.isHash) isHash = true;
+            result.add(new ArrayList<>(pre));
+            result_clusternum.add(node.clusternum);
+            result_isHash.add(node.isHash);
+            return true;
+        }
+        return false;
     }
+    //过滤掉子集
+    private void filterMaximalSubsets() {
+        for (int i = 0; i < result.size(); i++) {
+            List<Integer> current = result.get(i);
+            for (int j = 0; j < i; j++) {
+                List<Integer> prev = result.get(j);
+                if (isSuperset(prev, current)) {
+                    result.remove(i);
+                    result_isHash.remove(i);
+                    result_clusternum.remove(i);
+                    i--;
+                    break;
+                }
+            }
+        }
+    }
+
+    private boolean isSuperset(List<Integer> a, List<Integer> b) {
+        int i = 0, j = 0;
+        while (i < a.size() && j < b.size()) {
+            if (a.get(i) < b.get(j)) {
+                i++;
+            } else if (a.get(i).equals(b.get(j))) {
+                i++;
+                j++;
+            } else {
+                return false;
+            }
+        }
+        return j == b.size();
+    }
+    //收集到的子集是否是全覆盖，如果不是就返回未覆盖的集合
+    private List<Integer>  isComplete(){
+        Set<Integer> covered = new HashSet<>();
+        for (List<Integer> combo : result) {
+            covered.addAll(combo);
+        }
+
+        List<Integer> uncovered = new ArrayList<>();
+        for (int attr : candidate) {
+            if (!covered.contains(attr)) {
+                uncovered.add(attr);
+            }
+        }
+
+        return uncovered;
+    }
+
+
+
 }

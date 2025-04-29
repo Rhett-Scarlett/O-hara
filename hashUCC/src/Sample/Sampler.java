@@ -1,5 +1,7 @@
 package Sample;
 
+import test.Sample;
+
 import java.io.*;
 import java.util.*;
 
@@ -24,13 +26,32 @@ public class Sampler {
 
     private int fileLength;
 
+    private Sample sam;
 
 
-    public Sampler(List<String> columnFiles,List<String> columnDicts,int fileLength) {
+
+    public Sampler(List<String> columnFiles,List<String> columnDicts,int fileLength,Sample sample) {
         this.fileLength = fileLength;
         this.columnDicts = columnDicts;
         this.columnFiles = columnFiles;
         this.hypeGraph = new Hypedges();
+        sam =sample;
+    }
+
+    public List<Integer>   test_sample(TuplePair pair){
+        List<Integer> edge=new ArrayList<>();
+        for(int m=0;m<sam.numVer;m++){
+            if(sam.reversePLI.get(m)[pair.id1]==-1||sam.reversePLI.get(m)[pair.id2]!=sam.reversePLI.get(m)[pair.id1]) edge.add(m);
+        }
+        for(int m=0;m<sam.numVer;m++){
+            System.out.print(sam.reversePLI.get(m)[pair.id1]+" ");
+        }
+        System.out.println();
+        for(int m=0;m<sam.numVer;m++){
+            System.out.print(sam.reversePLI.get(m)[pair.id2]+" ");
+        }
+        System.out.println();
+        return edge;
     }
     //初始采样
     public void initateSample() throws IOException {
@@ -55,6 +76,9 @@ public class Sampler {
     public int validSample(Map<Integer,List<Integer>> clusters) throws IOException {
         Set<TuplePair> validSampledPairs = new HashSet<>();
         if (clusters.size()==0) return 0;
+//        for (Map.Entry<Integer,List<Integer>> cl :clusters.entrySet()){
+//            System.out.println("簇"+ cl.getKey()+" "+cl.getValue());
+//        }
         double x = 0.2;
         int p = 0;
         List<Integer> probablily = new ArrayList<>();
@@ -76,10 +100,12 @@ public class Sampler {
             while (probablily.get(t) < selectedCi) t++;  // 找到对应簇
             selectedCi = t;
             List<Integer> cluster = clusters.get(selectedCi);
+            //System.out.println("采样簇 "+cluster);
             int clusterSize = cluster.size();
             if (clusterSize == 2) {
                 // 特殊情况：簇内只有 2 个元组，直接采样成一对
                 validSampledPairs.add(new TuplePair(cluster.get(0), cluster.get(1)));
+               //System.out.println("采样对 "+cluster.get(0)+" "+cluster.get(1));
             } else {
                 // 通用情况：簇内有多个元组，进行多次随机采样
 
@@ -92,6 +118,7 @@ public class Sampler {
                     }
                     // 添加采样对
                     validSampledPairs.add(new TuplePair(cluster.get(tuple1), cluster.get(tuple2)));
+                //System.out.println("采样对 "+cluster.get(tuple1)+" "+cluster.get(tuple2));
 
             }
         }
@@ -136,6 +163,7 @@ public class Sampler {
         // 遍历每个采样对，生成超边，并利用 addEdgeAndMinimizeInclusion 方法合并或更新超边集合
         for (TuplePair tuplePair : validSampledPairs) {
             hypedGraphSon.addEdgeAndMinimizeInclusion(processPairs.genrateEdge(tuplePair));
+            //System.out.println(tuplePair.toString()+" "+processPairs.genrateEdge(tuplePair));
         }
         // 将得到的新超边添加到全局的超边集合 hypeGraph.hyperedges 中
         for (List<Integer> edge : hypedGraphSon.hyperedges) {
